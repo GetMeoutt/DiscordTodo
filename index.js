@@ -12,7 +12,7 @@ const moment = require('moment/moment');
 const { parseArgs } = require('util');
 const { on } = require('events');
 const { error } = require('console');
-
+const { checkIfThisOrNextWeek } = require('./add_on.js');
 todo_path = path.join(__dirname, 'todo.json');
 
 
@@ -35,6 +35,9 @@ const client = new Client({
 
 client.login(process.env.TOKEN)
 
+
+
+
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return
 
@@ -42,8 +45,15 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.commandName === 'todo-create') {
         todoCreate(interaction)
     }
-    if (interaction.commandName === 'add-COMM' || 'add-bussiness' || 'add-python' || 'add-webdev' || 'add-math' || 'add-linux' || 'add-networking') {
-        todoAdd(interaction)
+    if (interaction.commandName.startsWith('add-')) {
+        const datePattern = /^(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])\.(\d{4})$/;
+        if (!datePattern.test(interaction.options.getString('due_date'))) {
+            await interaction.reply({ content: 'Invalid date format! Please use MM.DD.YYYY.', ephemeral: true });
+            return;
+        }
+        else {
+            todoAdd(interaction)
+        }
     }
     if (interaction.commandName === 'todo-list') {
         todoList(interaction)
@@ -163,6 +173,11 @@ const todoAdd = async (interact) => {
                
 const todoList = async (message) => {
     try {
+        //check if todo list exists
+        if (!fs.existsSync(todo_path)) {
+            await message.reply('Todo list does not exist!, try /todo-create')
+            return;
+        }
         const data = await fs.promises.readFile(todo_path, 'utf8');
         
         const subject_obj = JSON.parse(data)
@@ -173,15 +188,21 @@ const todoList = async (message) => {
  
 
         const fields = {};
+        const dueFields = {};
         for (let i = 0; i < Object.keys(subject_obj).length; i++) {
             const subject = Object.keys(subject_obj)[i];
             const assignments = subject_obj[subject]['assignments'];
+            const due_date = subject_obj[subject]['due_date'];
             fields[subject] = assignments.join('\n');
+            dueFields[subject] = due_date.join('\n');
+            console.log(fields[subject])
+            dueFields[subject] = checkIfThisOrNextWeek(dueFields[subject])
+
            
         }
         embed_todo.addFields(Object.keys(fields).map(subject => {
             if (fields[subject].trim() !== '') {
-              return { name: subject, value: fields[subject] };
+              return { name: subject, value: `${fields[subject]} ⏰ ${dueFields[subject]}` };
             }
             else{
                 return{name: subject, value: 'No assignments!'} 
@@ -218,6 +239,7 @@ const todoRemove = async (interact) =>{
                     if(remove_assignment === Object.values(content)[i]['assignments'][h].trim()){
                         console.log(Object.values(content)[i]['assignments'][h])
                         Object.values(content)[i]['assignments'].splice(h)
+                        Object.values(content)[i]['due_date'].splice(h)
                         console.log(Object.values(content)[i]['assignments'])
                         
 
@@ -228,6 +250,9 @@ const todoRemove = async (interact) =>{
                         
 
 
+                    }
+                    else{
+                        console.log('no assignment not found!')
                     }
                     // else{
                     //     console.log(Object.values(content)[i]['assignments'][h],remove_assignment)
@@ -256,6 +281,20 @@ const todoRemove = async (interact) =>{
 
 }
 const todoReset =(interact) =>{
+    fs.unlink(todo_path, (err) => {
+        if (err) {
+            console.error(err)
+            interact.reply('there was an error resetting the todo list')
+            return
+            
+           
+        }
+        else {
+            interact.reply('Reset todo list successfully!')
+        }
+    
+        
+    })
     
 }
 
