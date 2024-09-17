@@ -9,6 +9,9 @@ const { EmbedBuilder } = require('@discordjs/builders');
 
 const jSON = require('json');
 const moment = require('moment/moment');
+const { parseArgs } = require('util');
+const { on } = require('events');
+const { error } = require('console');
 
 todo_path = path.join(__dirname, 'todo.json');
 
@@ -45,13 +48,13 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.commandName === 'todo-list') {
         todoList(interaction)
     }
-    // if (interaction.commandName === 'todo-remove') {
-    //     todoRemove(interaction)
-    // }
-    // if (interaction.commandName === 'todo-reset') {
-    //     todoReset(interaction)
+    if (interaction.commandName === 'todo-remove') {
+        todoRemove(interaction)
+    }
+    if (interaction.commandName === 'todo-reset') {
+        todoReset(interaction)
         
-    // }
+    }
 })
 const todoCreate = async (message) => {
         message.channel.sendTyping('todo list')
@@ -174,7 +177,7 @@ const todoList = async (message) => {
             const subject = Object.keys(subject_obj)[i];
             const assignments = subject_obj[subject]['assignments'];
             fields[subject] = assignments.join('\n');
-            console.log(fields)
+           
         }
         embed_todo.addFields(Object.keys(fields).map(subject => {
             if (fields[subject].trim() !== '') {
@@ -193,6 +196,75 @@ const todoList = async (message) => {
     }
     
     };
+
+
+
+const todoRemove = async (interact) =>{
+    try{
+        const data = await fs.promises.readFile(todo_path, 'utf8');
+        const content = JSON.parse(data)
+        //console.log(content)
+
+        for (let i = 0 ; i < Object.keys(content).length ; i++){
+            //console.log(Object.values(content)[i]['assignments'])
+            for(let h = 0 ; h < Object.values(content)[i]['assignments'].length ;h++){
+                if (Object.values(content)[i]['assignments'][h].trim() === '') {
+                    continue
+                }
+                else{
+                    const remove_assignment = interact.options.getString('assignment_name')
+                    //subject = Object.keys(data)
+                    //console.log(`${Object.values(content)[i]['assignments'][h]} :  ${remove_assignment}` ,remove_assignment === Object.values(content)[i]['assignments'][h].trim() ,h)
+                    if(remove_assignment === Object.values(content)[i]['assignments'][h].trim()){
+                        console.log(Object.values(content)[i]['assignments'][h])
+                        Object.values(content)[i]['assignments'].splice(h)
+                        console.log(Object.values(content)[i]['assignments'])
+                        
+
+        
+
+                        
+
+                        
+
+
+                    }
+                    // else{
+                    //     console.log(Object.values(content)[i]['assignments'][h],remove_assignment)
+                    //     //interact.reply('no assignment not found!')
+                    // }
+                    
+                }
+
+            }
+            //console.log(Object.keys(content)[i],Object.values(content)[i]['assignments'])
+        }
+        //console.log(content)
+      
+        fs.writeFile(todo_path,JSON.stringify(content),(err)=>{
+            if(err){
+                console.log(err)
+            }
+            interact.reply('delete complete!😊😊😊😊😊')    
+
+        })
+        
+    }
+    catch(err){
+        console.error(err)
+    }
+
+}
+const todoReset =(interact) =>{
+    
+}
+
+client.on('messageCreate', (message)=>{
+    if (message.content === 'hillary'){
+        message.channel.send('she is sleeping')
+    }
+
+})
     
     //     })
     // }

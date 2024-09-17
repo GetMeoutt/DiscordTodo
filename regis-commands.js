@@ -146,6 +146,19 @@ const slashRegister = async () => {
                     name: 'todo-reset',
                     description: 'Reset todo list',
                 },
+                {
+                    name: 'todo-remove',
+                    description: 'Remove an assignment from the list',
+                    options: [
+                        {
+                            name: 'assignment_name',
+                            description: 'Name of assignment',
+                            type: 3, 
+                            required: true,
+                        }
+                    ],
+                }
+                
             ],
 
         });
