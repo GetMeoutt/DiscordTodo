@@ -263,6 +263,37 @@ client.on('messageCreate', (message)=>{
     if (message.content === 'hillary'){
         message.channel.send('she is sleeping')
     }
+  
+    
+    if(message.content === 'nuree') {
+        message.channel.send('he is eating / nagging')
+    }
+    if(message.content === 'MONTE') {
+        message.channel.send('so rich')
+    }
+//     make this
+// monday - check DQ
+// monte has lunch - a pie and a banana
+// monte will go - dollarama
+// bob - is roasted
+
+     if (message.content ===('monday')) {
+        message.channel.send('DQ')
+     }
+
+     if (message.content ===('monte has lunch')) {
+        message.channel.send('a pie and a banana')
+     }
+
+     if (message.content ===('monte will go')) {
+        message.channel.send('dollarama')
+     }
+
+     if (message.content ===('bob')) {
+        message.channel.send('is roasted')
+     }
+
+
 
 })
     
