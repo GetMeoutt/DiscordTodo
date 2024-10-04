@@ -219,7 +219,7 @@ const todoReset = (interaction) => {
 
 // Message listener
 client.on('messageCreate', async (message) => {
-    if (message.content === 'hillary') {
+    if (message.content === 'hillary' || message.content === 'HILLARY' || message.content === 'H') {
         message.channel.send('She is sleeping... 😪');
         message.channel.send('Hillary, are you still there? 👀');
 
@@ -266,7 +266,7 @@ client.on('messageCreate', async (message) => {
         // Add the event listener for messages
         client.on('messageCreate', messageListener);
 
-        const win = await countDown(10);
+        const win = await countDown(120);
 
         // Remove the message listener after countdown is over or interrupted
         client.off('messageCreate', messageListener);
