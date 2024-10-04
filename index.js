@@ -7,7 +7,10 @@ const path = require('path');
 const fs = require('fs');
 const { EmbedBuilder } = require('@discordjs/builders');
 const moment = require('moment/moment');
-
+const { parseArgs } = require('util');
+const { on } = require('events');
+const { error } = require('console');
+const { checkIfThisOrNextWeek } = require('./add_on.js'); // Assuming you have this file
 const todo_path = path.join(__dirname, 'todo.json');
 
 const subject_addcommand = ['add-COMM', 'add-bussiness', 'add-python', 'add-webdev', 'add-math', 'add-linux', 'add-networking'];
@@ -33,6 +36,15 @@ client.on('interactionCreate', async (interaction) => {
     }
     if (subject_addcommand.includes(commandName)) {
         todoAdd(interaction);
+    }
+    if (interaction.commandName.startsWith('add-')) {
+        const datePattern = /^(0[1-9]|1[0-2])\.(0[1-9]|[12][0-9]|3[01])\.(\d{4})$/;
+        if (!datePattern.test(interaction.options.getString('due_date'))) {
+            await interaction.reply({ content: 'Invalid date format! Please use MM.DD.YYYY.', ephemeral: true });
+            return;
+        } else {
+            todoAdd(interaction);
+        }
     }
     if (commandName === 'todo-list') {
         todoList(interaction);
@@ -128,6 +140,11 @@ const todoAdd = async (interaction) => {
 // List the todo items
 const todoList = async (interaction) => {
     try {
+        // Check if todo list exists
+        if (!fs.existsSync(todo_path)) {
+            await interaction.reply('Todo list does not exist! Try /todo-create.');
+            return;
+        }
         const data = await fs.promises.readFile(todo_path, 'utf8');
         const subject_obj = JSON.parse(data);
 
@@ -136,14 +153,18 @@ const todoList = async (interaction) => {
             .setDescription('Todo List for ' + moment().format('MMMM Do YYYY'));
 
         const fields = {};
+        const dueFields = {};
         for (let i = 0; i < Object.keys(subject_obj).length; i++) {
             const subject = Object.keys(subject_obj)[i];
             const assignments = subject_obj[subject]['assignments'];
+            const due_date = subject_obj[subject]['due_date'];
             fields[subject] = assignments.join('\n');
+            dueFields[subject] = due_date.join('\n');
+            dueFields[subject] = checkIfThisOrNextWeek(dueFields[subject]);
         }
         embed_todo.addFields(Object.keys(fields).map(subject => {
             if (fields[subject].trim() !== '') {
-                return { name: subject, value: fields[subject] };
+                return { name: subject, value: `${fields[subject]} ⏰ ${dueFields[subject]}` };
             } else {
                 return { name: subject, value: 'No assignments!' };
             }
@@ -166,6 +187,7 @@ const todoRemove = async (interaction) => {
                 const remove_assignment = interaction.options.getString('assignment_name');
                 if (remove_assignment === Object.values(content)[i]['assignments'][h].trim()) {
                     Object.values(content)[i]['assignments'].splice(h, 1);
+                    Object.values(content)[i]['due_date'].splice(h, 1);
                     break;
                 }
             }
@@ -183,12 +205,23 @@ const todoRemove = async (interaction) => {
     }
 };
 
+// Reset the todo list
+const todoReset = (interaction) => {
+    fs.unlink(todo_path, (err) => {
+        if (err) {
+            console.error(err);
+            interaction.reply('There was an error resetting the todo list.');
+            return;
+        }
+        interaction.reply('Reset todo list successfully!');
+    });
+};
+
 // Message listener
 client.on('messageCreate', async (message) => {
     if (message.content === 'hillary') {
-       
         message.channel.send('She is sleeping... 😪');
-        message.channel.send('Hillrary, are you still there? 👀')
+        message.channel.send('Hillary, are you still there? 👀');
 
         let interrupted = false;
         const hillaryId = '498360095428837386'; // Hillary's ID
@@ -202,24 +235,23 @@ client.on('messageCreate', async (message) => {
                 '..🏃‍➡️',
                 '.🏃‍➡️',
                 '🏃‍➡️',
-                 // Reaches the end
             ];
-        
+
             // Send initial countdown message
             let countdownMessage = await message.channel.send(`Hurry up! Time's running out! ${steps[0]}: ${n}`);
-            
+
             for (let i = n - 1; i >= 0; i--) {
                 if (interrupted) break; // Stop countdown if interrupted
-        
+
                 // Calculate the position of the human emoji
-                let stepIndex = i % steps.length; // Modulus to loop back to the start
-        
+                let stepIndex = (n - i - 1) % steps.length; // Modulus to loop back to the start
+
                 // Edit the message with the updated countdown and human position
                 await countdownMessage.edit(`Hurry up! Time's running out! ${steps[stepIndex]}: ${i}`);
-        
+
                 await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
             }
-            
+
             return interrupted;
         };
 
@@ -227,8 +259,6 @@ client.on('messageCreate', async (message) => {
         const messageListener = (msg) => {
             if (msg.author.id === hillaryId && !interrupted) {
                 message.channel.send('She is awake!! 🤟👁️👄👁️✌️');
-                
-                
                 interrupted = true;
             }
         };
@@ -236,7 +266,7 @@ client.on('messageCreate', async (message) => {
         // Add the event listener for messages
         client.on('messageCreate', messageListener);
 
-        const win = await countDown(10);
+        const win = await countDown(120);
 
         // Remove the message listener after countdown is over or interrupted
         client.off('messageCreate', messageListener);
@@ -245,7 +275,6 @@ client.on('messageCreate', async (message) => {
             message.channel.send('She is gone... 😞');
         } else {
             message.channel.send('Hillary wins!');
-            
         }
 
         // Read the file and update the scores
@@ -273,19 +302,19 @@ client.on('messageCreate', async (message) => {
                     .setTitle('hillary sleeping')
                     .addFields(
                         { name: 'hillary score', value: `${score['hillary_score']}` },
-                        { name: 'obesever score', value: `${score['obesever']}` },
+                        { name: 'observer score', value: `${score['obesever']}` },
                     );
                 message.channel.send({ embeds: [score_embed] });
+
                 if (win) {
                     message.channel.send('https://media1.tenor.com/m/88283N0QpbEAAAAC/awake-im-awake.gif');
-                }
-                else{
+                } else {
                     message.channel.send('https://media1.tenor.com/m/8ObQUkZmobAAAAAd/dog-sleeping.gif');
                 }
             });
         });
     }
- 
+
     if (message.content === 'undo_hillary') {
         fs.readFile('hillary_sleeping.json', 'utf8', (err, data) => {
             if (err) {
@@ -307,8 +336,9 @@ client.on('messageCreate', async (message) => {
                     );
                 message.channel.send({ embeds: [score_embed] });
             });
-        })
+        });
     }
+
     if (message.content === 'undo_observer') {
         fs.readFile('hillary_sleeping.json', 'utf8', (err, data) => {
             if (err) {
@@ -326,14 +356,12 @@ client.on('messageCreate', async (message) => {
                     .setTitle('hillary sleeping')
                     .addFields(
                         { name: 'hillary score', value: `${score['hillary_score']}` },
-                        { name: 'obesever score', value: `${score['obesever']}` },
+                        { name: 'observer score', value: `${score['obesever']}` },
                     );
                 message.channel.send({ embeds: [score_embed] });
             });
-        })
+        });
     }
-    
-    
 
     // Other message handlers can go here
     if (message.content === 'nuree') {
@@ -358,5 +386,4 @@ client.on('messageCreate', async (message) => {
     if (message.content === 'bob') {
         message.channel.send('is roasted');
     }
-
 });
