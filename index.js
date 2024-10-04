@@ -219,7 +219,7 @@ const todoReset = (interaction) => {
 
 // Message listener
 client.on('messageCreate', async (message) => {
-    if (message.content === 'hillary') {
+    if (message.content === 'hillary' || message.content === 'HILLARY' || message.content === 'H') {
         message.channel.send('She is sleeping... 😪');
         message.channel.send('Hillary, are you still there? 👀');
 
